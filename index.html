@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>three.js webgl - STL</title>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0"
+    />
+    <style>
+      body {
+        font-family: Monospace;
+        background-color: #000000;
+        margin: 0px;
+        overflow: hidden;
+      }
+
+      #info {
+        color: #fff;
+        position: absolute;
+        top: 10px;
+        width: 100%;
+        text-align: center;
+        z-index: 100;
+        display: block;
+      }
+
+      a {
+        color: skyblue;
+      }
+      .button {
+        background: #999;
+        color: #eee;
+        padding: 0.2em 0.5em;
+        cursor: pointer;
+      }
+      .highlight {
+        background: orange;
+        color: #fff;
+      }
+
+      span {
+        display: inline-block;
+        width: 60px;
+        text-align: center;
+      }
+      .bottom_y_low {
+        border: 1px solid white;
+        width: 50px;
+        height: 50px;
+        background-color: blue;
+        position: absolute;
+        left: 50px;
+        top: 100px;
+        cursor: pointer;
+      }
+      .bottom_y_high {
+        border: 1px solid white;
+
+        width: 50px;
+        height: 50px;
+        background-color: blue;
+        position: absolute;
+        left: 50px;
+        top: 50px;
+        cursor: pointer;
+      }
+      .top_y_high {
+        border: 1px solid white;
+        width: 50px;
+        height: 50px;
+        background-color: red;
+        position: absolute;
+        left: 100px;
+        top: 50px;
+        cursor: pointer;
+      }
+      .top_y_low {
+        border: 1px solid white;
+        width: 50px;
+        height: 50px;
+        background-color: red;
+        position: absolute;
+        left: 100px;
+        top: 100px;
+        cursor: pointer;
+      }
+      .ranger {
+        position: absolute;
+        left: 200px;
+        top: 50px;
+      }
+
+      .activateTopComparison {
+        border: 1px solid black;
+        width: 50px;
+        height: 50px;
+        background-color: white;
+        position: absolute;
+        left: 400px;
+        top: 50px;
+        cursor: pointer;
+      }
+      .activateBottomComparison {
+        border: 1px solid black;
+        width: 50px;
+        height: 50px;
+        background-color: white;
+        position: absolute;
+        left: 400px;
+        top: 100px;
+        cursor: pointer;
+      }
+
+      .label {
+        color: #fff;
+        font-family: sans-serif;
+        padding: 2px;
+        background: rgba(0, 0, 0, 0.6);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="threeContainer"></div>
+    <div id="info">
+      <a href="http://threejs.org" target="_blank" rel="noopener">three.js</a> -
+      STL loader test by
+      <a href="https://github.com/aleeper" target="_blank" rel="noopener"
+        >aleeper</a
+      >. PR2 head from
+      <a href="http://www.ros.org/wiki/pr2_description">www.ros.org</a>
+    
+        <div class="bottom_y_high"></div>
+    <div class="bottom_y_low"></div>
+    <div class="top_y_high"></div>
+    <div class="top_y_low"></div>
+    <div class="activateTopComparison"></div>
+    <div class="activateBottomComparison"></div>
+
+    <input class="ranger" type="range" min="1" max="18" step="1" />
+
+    </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.8.0/xlsx.js">
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.8.0/jszip.js">
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.10.8/xlsx.full.min.js">
+</script>
+    <script src="src/three.min.js"></script>
+    <script src="src/STLLoader.js"></script>
+    <script src="src/OrbitControls.js"></script>
+    <script src="src/jquery-3.4.0.min.js"></script>
+    <script src="src/WebGL.js"></script>
+    <script src="src/stats.min.js"></script>
+    <script src="src/CSS2DRenderer.js"></script>
+    <script>
+      document.querySelector(".bottom_y_low").addEventListener("click", () => {
+        clearCollisionScene();
+        changePositionOfBottomJawsByY(-VerticalJawsAlignmentCoeff);
+        addCurrentJawsToCollisionScene();
+        needDepthRaycast = true;
+      });
+      document.querySelector(".bottom_y_high").addEventListener("click", () => {
+        clearCollisionScene();
+        changePositionOfBottomJawsByY(VerticalJawsAlignmentCoeff);
+        addCurrentJawsToCollisionScene();
+        needDepthRaycast = true;
+      });
+      document.querySelector(".top_y_low").addEventListener("click", () => {
+        clearCollisionScene();
+        changePositionOfTopJawsByY(-VerticalJawsAlignmentCoeff);
+        addCurrentJawsToCollisionScene();
+        needDepthRaycast = true;
+      });
+      document.querySelector(".top_y_high").addEventListener("click", () => {
+        clearCollisionScene();
+        changePositionOfTopJawsByY(VerticalJawsAlignmentCoeff);
+        addCurrentJawsToCollisionScene();
+        needDepthRaycast = true;
+      });
+      document.querySelector(".ranger").addEventListener("change", () => {
+        LastJawsObject = CurrentJawsObject;
+        CurrentJawsObject =
+          JawsObjects[document.querySelector(".ranger").value];
+        renderCurrentJawsObject();
+        renderCurrentSeparationArray();
+        LastSeparationArray = CurrentSeparationArray;
+        CurrentSeparationArray = SeparObjectsLayers[document.querySelector(".ranger").value]['meshes'];
+      });
+      document.querySelector(".ranger").addEventListener("input", () => {
+        clearCollisionScene();
+        LastJawsObject = CurrentJawsObject;
+        CurrentJawsObject =
+          JawsObjects[document.querySelector(".ranger").value];
+
+        LastSeparationArray = CurrentSeparationArray;
+        CurrentSeparationArray = SeparObjectsLayers[document.querySelector(".ranger").value]['meshes'];
+        addCurrentJawsToCollisionScene();
+        renderCurrentJawsObject();
+        renderCurrentSeparationArray();
+        needDepthRaycast = true;
+      });
+      document
+        .querySelector(".activateTopComparison")
+        .addEventListener("click", event => {
+          if (ComparisonJawsObj.topState === 0) {
+            scene.add(ComparisonJawsObj.topTeeth);
+            ComparisonJawsObj.topState = 1;
+            event.target.style.backgroundColor = "green";
+          } else {
+            scene.remove(ComparisonJawsObj.topTeeth);
+            ComparisonJawsObj.topState = 0;
+            event.target.style.backgroundColor = "white";
+          }
+        });
+      document
+        .querySelector(".activateBottomComparison")
+        .addEventListener("click", event => {
+          if (ComparisonJawsObj.bottomState === 0) {
+            scene.add(ComparisonJawsObj.bottomTeeth);
+            ComparisonJawsObj.bottomState = 1;
+            event.target.style.backgroundColor = "green";
+          } else {
+            scene.remove(ComparisonJawsObj.bottomTeeth);
+            ComparisonJawsObj.bottomState = 0;
+            event.target.style.backgroundColor = "white";
+          }
+        });
+    </script>
+
+    <script src="src/MAIN.js"></script>
+  </body>
+</html>
